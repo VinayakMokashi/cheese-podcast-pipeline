@@ -1,0 +1,5 @@
+secrets/
+text_prompts/
+text_paragraphs/
+.venv/
+__pycache__/

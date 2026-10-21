@@ -1,0 +1,68 @@
+# Mega Pipeline: run all five steps in order, then serve the results website.
+#   docker compose up --build
+services:
+  transcribe_audio:
+    build: ./transcribe_audio
+    image: transcribe_audio
+    volumes:
+      - ./transcribe_audio:/app
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --transcribe --upload"]
+
+  generate_text:
+    build: ./generate_text
+    image: generate_text
+    volumes:
+      - ./generate_text:/app
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --generate --upload"]
+    depends_on:
+      transcribe_audio:
+        condition: service_completed_successfully
+
+  synthesis_audio_en:
+    build: ./synthesis_audio_en
+    image: synthesis_audio_en
+    volumes:
+      - ./synthesis_audio_en:/app
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --synthesis"]
+    depends_on:
+      generate_text:
+        condition: service_completed_successfully
+
+  translate_text:
+    build: ./translate_text
+    image: translate_text
+    volumes:
+      - ./translate_text:/app
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --translate --upload"]
+    depends_on:
+      generate_text:
+        condition: service_completed_successfully
+
+  synthesis_audio:
+    build: ./synthesis_audio
+    image: synthesis_audio
+    volumes:
+      - ./synthesis_audio:/app
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --synthesis"]
+    depends_on:
+      translate_text:
+        condition: service_completed_successfully
+
+  # Optional bonus step (ElevenLabs). Runs only with: docker compose --profile elevenlabs up
+  synthesis_audio_pp:
+    image: synthesis_audio
+    profiles: ["elevenlabs"]
+    volumes:
+      - ./synthesis_audio:/app
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli_11.py --download --synthesis --upload"]
+    depends_on:
+      translate_text:
+        condition: service_completed_successfully
+
+  website:
+    build: ./website
+    image: website
+    ports:
+      - "127.0.0.1:8090:9100"
+    volumes:
+      - ./website/secrets:/app/secrets:ro

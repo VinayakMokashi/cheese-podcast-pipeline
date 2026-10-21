@@ -1,0 +1,5 @@
+secrets/
+text_paragraphs/
+text_translated/
+.venv/
+__pycache__/

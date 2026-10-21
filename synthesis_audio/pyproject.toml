@@ -1,0 +1,9 @@
+[project]
+name = "synthesis-audio"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "google-cloud-storage>=3.17.1",
+    "google-cloud-texttospeech>=2.38.0",
+    "requests>=2.34.2",
+]

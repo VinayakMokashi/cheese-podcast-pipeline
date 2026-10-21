@@ -1,0 +1,5 @@
+secrets/
+input_audios/
+text_prompts/
+.venv/
+__pycache__/
