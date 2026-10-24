@@ -1,0 +1,91 @@
+# Mega Pipeline (flexible workflow): run all five steps in order, then serve the results website.
+#   docker compose up --build
+# Like docker-shell.sh, every service reads the key from ../secrets (one level above this repo).
+name: mega-pipeline-flexible
+
+services:
+  transcribe_audio:
+    build: ./transcribe_audio
+    image: mega-pipeline-transcribe-audio
+    volumes:
+      - ./transcribe_audio:/app
+      - ../secrets:/secrets:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/mega-pipeline.json
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --transcribe --upload"]
+
+  generate_text:
+    build: ./generate_text
+    image: mega-pipeline-generate-text
+    volumes:
+      - ./generate_text:/app
+      - ../secrets:/secrets:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/mega-pipeline.json
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --generate --upload"]
+    depends_on:
+      transcribe_audio:
+        condition: service_completed_successfully
+
+  synthesis_audio_en:
+    build: ./synthesis_audio_en
+    image: mega-pipeline-synthesis-audio-en
+    volumes:
+      - ./synthesis_audio_en:/app
+      - ../secrets:/secrets:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/mega-pipeline.json
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --synthesis"]
+    depends_on:
+      generate_text:
+        condition: service_completed_successfully
+
+  translate_text:
+    build: ./translate_text
+    image: mega-pipeline-translate-text
+    volumes:
+      - ./translate_text:/app
+      - ../secrets:/secrets:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/mega-pipeline.json
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --translate --upload"]
+    depends_on:
+      generate_text:
+        condition: service_completed_successfully
+
+  synthesis_audio:
+    build: ./synthesis_audio
+    image: mega-pipeline-synthesis-audio
+    volumes:
+      - ./synthesis_audio:/app
+      - ../secrets:/secrets:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/mega-pipeline.json
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli.py --download --synthesis"]
+    depends_on:
+      translate_text:
+        condition: service_completed_successfully
+
+  # Optional bonus step (ElevenLabs). Runs only with: docker compose --profile elevenlabs up
+  synthesis_audio_pp:
+    image: mega-pipeline-synthesis-audio
+    profiles: ["elevenlabs"]
+    volumes:
+      - ./synthesis_audio:/app
+      - ../secrets:/secrets:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/mega-pipeline.json
+    command: ["-c", "source /home/app/.venv/bin/activate && python cli_11.py --download --synthesis --upload"]
+    depends_on:
+      translate_text:
+        condition: service_completed_successfully
+
+  website:
+    build: ./website
+    image: mega-pipeline-website
+    ports:
+      - "127.0.0.1:8090:9100"
+    volumes:
+      - ../secrets:/secrets:ro
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/mega-pipeline.json

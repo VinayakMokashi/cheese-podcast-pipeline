@@ -1,0 +1,16 @@
+# misc
+.DS_Store
+geckodriver.log
+secrets/
+scratch.txt
+_test
+outputs
+.vscode
+/synthesis_audio_pp
+/persistent-folder
+/api-service
+/deployment
+/frontend
+/.idea
+__pycache__/
+.venv/
